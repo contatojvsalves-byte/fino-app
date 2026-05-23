@@ -28,6 +28,9 @@ function checkRateLimit(userId: string): boolean {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth()
+    if (!user.id) {
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+    }
 
     // Rate limiting
     if (!checkRateLimit(user.id)) {
