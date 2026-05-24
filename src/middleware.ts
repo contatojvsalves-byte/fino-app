@@ -1,32 +1,39 @@
 // src/middleware.ts
-// Proteção de rotas — redireciona usuários não autenticados
-
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { NextResponse } from 'next/server'
 
-const PUBLIC_ROUTES  = ['/login', '/register', '/terms', '/privacy']
-const AUTH_ROUTES    = ['/login', '/register']
+const PUBLIC_ROUTES = ['/login', '/register', '/terms', '/privacy', '/onboarding']
+const AUTH_ROUTES   = ['/login', '/register']
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const isLoggedIn   = !!req.auth
 
+  const isApi    = pathname.startsWith('/api')
+  const isStatic = pathname.startsWith('/_next') || pathname.includes('.')
   const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r))
-  const isApi    = pathname.startsWith('/api/auth')
 
-  // Rota pública de auth — redireciona para dashboard se já logado
+  // Não interceptar rotas estáticas ou de API
+  if (isStatic || isApi) return NextResponse.next()
+
+  // Verificar sessão
+  const session = await auth()
+  const isLoggedIn = !!session?.user
+
+  // Já logado tentando acessar login/register → dashboard
   if (AUTH_ROUTES.some(r => pathname.startsWith(r)) && isLoggedIn) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // Rota protegida — redireciona para login se não autenticado
-  if (!isPublic && !isApi && !isLoggedIn) {
+  // Rota protegida sem login → login
+  if (!isPublic && !isLoggedIn) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
   return NextResponse.next()
-})
+}
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.png|manifest.json).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icon.png|manifest.json|sw.js).*)',
+  ],
 }
