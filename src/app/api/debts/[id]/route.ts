@@ -20,11 +20,15 @@ const paymentSchema = z.object({
   notes:  z.string().optional(),
 })
 
-// PUT /api/debts/[id] — atualizar dívida
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+// PUT /api/debts/[id]
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
     const user     = await requireAuth()
-    const existing = await prisma.debt.findUnique({ where: { id: params.id } })
+    const existing = await prisma.debt.findUnique({ where: { id } })
     if (!existing || existing.userId !== user.id)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
@@ -34,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ success:false, data:null, error: parsed.error.errors[0].message }, { status:400 })
 
     const updated = await prisma.debt.update({
-      where: { id: params.id },
+      where: { id },
       data:  {
         ...parsed.data,
         dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : undefined,
@@ -42,22 +46,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       include: { payments: { orderBy: { paidAt: 'desc' }, take: 10 } },
     })
 
-    return NextResponse.json({
-      success: true,
-      data: normalizeDebt(updated),
-      error: null,
-    })
+    return NextResponse.json({ success:true, data: normalizeDebt(updated), error:null })
   } catch (err: any) {
     if (err.message === 'UNAUTHORIZED') return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
     return NextResponse.json({ success:false, data:null, error:'Erro interno' }, { status:500 })
   }
 }
 
-// POST /api/debts/[id]/payment — registrar pagamento parcial
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+// POST /api/debts/[id] — pagamento parcial
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
     const user     = await requireAuth()
-    const existing = await prisma.debt.findUnique({ where: { id: params.id } })
+    const existing = await prisma.debt.findUnique({ where: { id } })
     if (!existing || existing.userId !== user.id)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
@@ -70,12 +74,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const currentBalance    = Number(existing.currentBalance)
     const newBalance        = Math.max(0, currentBalance - amount)
 
-    // Determinar novo status
     let newStatus: 'ACTIVE' | 'PARTIAL' | 'PAID' = 'ACTIVE'
     if (newBalance === 0) newStatus = 'PAID'
     else if (amount > 0)  newStatus = 'PARTIAL'
 
-    // Atualizar parcelas se for parcelado
     let newPaidInstallments = existing.paidInstallments
     if (existing.isInstallment && existing.monthlyPayment) {
       const installmentValue = Number(existing.monthlyPayment)
@@ -86,15 +88,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const [payment, updatedDebt] = await prisma.$transaction([
       prisma.debtPayment.create({
-        data: { debtId: params.id, amount, notes: notes ?? null },
+        data: { debtId: id, amount, notes: notes ?? null },
       }),
       prisma.debt.update({
-        where: { id: params.id },
-        data: {
-          currentBalance:   newBalance,
-          status:           newStatus,
-          paidInstallments: newPaidInstallments,
-        },
+        where: { id },
+        data:  { currentBalance: newBalance, status: newStatus, paidInstallments: newPaidInstallments },
         include: { payments: { orderBy: { paidAt: 'desc' }, take: 10 } },
       }),
     ])
@@ -112,14 +110,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 }
 
 // DELETE /api/debts/[id]
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
     const user     = await requireAuth()
-    const existing = await prisma.debt.findUnique({ where: { id: params.id } })
+    const existing = await prisma.debt.findUnique({ where: { id } })
     if (!existing || existing.userId !== user.id)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
-    await prisma.debt.delete({ where: { id: params.id } })
+    await prisma.debt.delete({ where: { id } })
     return NextResponse.json({ success:true, data:null, error:null })
   } catch (err: any) {
     if (err.message === 'UNAUTHORIZED') return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })

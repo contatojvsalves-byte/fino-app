@@ -5,8 +5,12 @@ import { requireAuth } from '@/lib/auth'
 import { updateTransactionSchema } from '@/lib/validations'
 
 // PUT /api/transactions/[id]
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
     const user = await requireAuth()
     const body = await req.json()
 
@@ -14,13 +18,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!parsed.success)
       return NextResponse.json({ success:false, data:null, error: parsed.error.errors[0].message }, { status:400 })
 
-    // Garante que a transação pertence ao usuário (evita vazamento entre usuários)
-    const existing = await prisma.transaction.findUnique({ where: { id: params.id } })
+    const existing = await prisma.transaction.findUnique({ where: { id } })
     if (!existing || existing.userId !== user.id)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
     const updated = await prisma.transaction.update({
-      where:   { id: params.id },
+      where:   { id },
       data:    {
         ...parsed.data,
         amount: parsed.data.amount,
@@ -42,15 +45,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/transactions/[id]
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
     const user = await requireAuth()
 
-    const existing = await prisma.transaction.findUnique({ where: { id: params.id } })
+    const existing = await prisma.transaction.findUnique({ where: { id } })
     if (!existing || existing.userId !== user.id)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
-    await prisma.transaction.delete({ where: { id: params.id } })
+    await prisma.transaction.delete({ where: { id } })
     return NextResponse.json({ success:true, data:null, error:null })
   } catch (err: any) {
     if (err.message === 'UNAUTHORIZED')
