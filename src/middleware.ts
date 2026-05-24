@@ -1,6 +1,7 @@
 // src/middleware.ts
+// Middleware simplificado — sem chamadas ao banco (Edge Runtime)
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getToken } from 'next-auth/jwt'
 
 const PUBLIC_ROUTES = ['/login', '/register', '/terms', '/privacy', '/onboarding']
 const AUTH_ROUTES   = ['/login', '/register']
@@ -8,16 +9,23 @@ const AUTH_ROUTES   = ['/login', '/register']
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  const isApi    = pathname.startsWith('/api')
-  const isStatic = pathname.startsWith('/_next') || pathname.includes('.')
-  const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r))
+  // Não interceptar API, arquivos estáticos
+  if (
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
+  }
 
-  // Não interceptar rotas estáticas ou de API
-  if (isStatic || isApi) return NextResponse.next()
+  // Verificar token JWT (não faz query no banco)
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+  })
 
-  // Verificar sessão
-  const session = await auth()
-  const isLoggedIn = !!session?.user
+  const isLoggedIn = !!token
+  const isPublic   = PUBLIC_ROUTES.some(r => pathname.startsWith(r))
 
   // Já logado tentando acessar login/register → dashboard
   if (AUTH_ROUTES.some(r => pathname.startsWith(r)) && isLoggedIn) {
@@ -34,6 +42,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icon.png|manifest.json|sw.js).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon.png|manifest.json).*)',
   ],
 }
