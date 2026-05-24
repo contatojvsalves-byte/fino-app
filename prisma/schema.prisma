@@ -326,17 +326,13 @@ model UserPlan {
   aiMessagesLimit    Int                 @default(5)
   transactionLimit   Int                 @default(50)
   subscriptionStatus SubscriptionStatus  @default(ACTIVE)
-  paymentProvider    String?             // "stripe" | "mercadopago" | "asaas"
-  externalSubId      String?             // ID externo do provedor
+  paymentProvider    String?
+  externalSubId      String?
   currentPeriodEnd   DateTime?
   cancelAtPeriodEnd  Boolean             @default(false)
+  aiResetKey         String?             // formato "YYYY-MM" para controle mensal
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_plans")
-}
 
 enum PlanType {
   FREE
