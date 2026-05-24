@@ -32,41 +32,48 @@ function normalize(inv: any) {
 export async function GET() {
   try {
     const user = await requireAuth()
+    const userId = user.id as string
+
     const invs = await prisma.investment.findMany({
-      where:   { userId: user.id },
+      where:   { userId },
       orderBy: { createdAt: 'desc' },
     })
     return NextResponse.json({ success: true, data: invs.map(normalize), error: null })
   } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
-    return NextResponse.json({ success:false, data:null, error:'Erro interno' }, { status:500 })
+    if (err.message === 'UNAUTHORIZED')
+      return NextResponse.json({ success: false, data: null, error: 'Não autorizado' }, { status: 401 })
+    return NextResponse.json({ success: false, data: null, error: 'Erro interno' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const user   = await requireAuth()
+    const userId = user.id as string
     const body   = await req.json()
     const parsed = investmentSchema.safeParse(body)
+
     if (!parsed.success)
-      return NextResponse.json({ success:false, data:null, error: parsed.error.errors[0].message }, { status:400 })
+      return NextResponse.json({ success: false, data: null, error: parsed.error.errors[0].message }, { status: 400 })
 
     const inv = await prisma.investment.create({
       data: {
-        userId:   user.id,
+        userId,
         ticker:   parsed.data.ticker,
         name:     parsed.data.name,
         type:     parsed.data.type,
         quantity: parsed.data.quantity,
         avgPrice: parsed.data.avgPrice,
         broker:   parsed.data.broker ?? null,
-        notes:    parsed.data.notes ?? null,
+        notes:    parsed.data.notes  ?? null,
       },
     })
-    return NextResponse.json({ success:true, data: normalize(inv), error:null }, { status:201 })
+
+    return NextResponse.json({ success: true, data: normalize(inv), error: null }, { status: 201 })
   } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+    if (err.message === 'UNAUTHORIZED')
+      return NextResponse.json({ success: false, data: null, error: 'Não autorizado' }, { status: 401 })
     console.error('[POST /api/investments]', err)
-    return NextResponse.json({ success:false, data:null, error:'Erro interno' }, { status:500 })
+    return NextResponse.json({ success: false, data: null, error: 'Erro interno' }, { status: 500 })
   }
 }

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const month  = params.get('month')  // "YYYY-MM"
     const type   = params.get('type')   // "INCOME" | "EXPENSE"
 
-    const where: Record<string, unknown> = { userId: user.id }
+    const where: Record<string, unknown> = { userId: user.id as string }
     if (type) where.type = type
     if (month) {
       const [y, m] = month.split('-').map(Number)
@@ -46,12 +46,12 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth()
 
     // Verificar limite do plano
-    const plan = await prisma.userPlan.findUnique({ where: { userId: user.id } })
+    const plan = await prisma.userPlan.findUnique({ where: { userId: user.id as string } })
     if (plan && plan.plan === 'FREE') {
       const now = new Date()
       const countThisMonth = await prisma.transaction.count({
         where: {
-          userId: user.id,
+          userId: user.id as string,
           createdAt: {
             gte: new Date(now.getFullYear(), now.getMonth(), 1),
           },
@@ -74,14 +74,14 @@ export async function POST(req: NextRequest) {
 
     // Verificar que a categoria existe e pertence ao usuário (ou é padrão)
     const category = await prisma.category.findFirst({
-      where: { id: categoryId, OR: [{ userId: user.id }, { userId: null }] },
+      where: { id: categoryId, OR: [{ userId: user.id as string }, { userId: null }] },
     })
     if (!category)
       return NextResponse.json({ success:false, data:null, error:'Categoria inválida' }, { status: 400 })
 
     const tx = await prisma.transaction.create({
       data: {
-        userId: user.id,
+        userId: user.id as string,
         type,
         amount,
         description,

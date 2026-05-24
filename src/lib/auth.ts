@@ -86,6 +86,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     // Criar plano FREE e perfil ao criar usuário
     async createUser({ user }) {
+      if (!user.id) return
       await prisma.$transaction([
         prisma.userPlan.create({
           data: {

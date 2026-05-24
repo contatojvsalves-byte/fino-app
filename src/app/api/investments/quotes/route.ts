@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const quotes = await fetchQuotes(items)
 
     // Atualizar currentPrice no banco para cada investimento
-    const invs = await prisma.investment.findMany({ where: { userId: user.id } })
+    const invs = await prisma.investment.findMany({ where: { userId: user.id as string } })
     await Promise.all(
       invs.map(inv => {
         const q = quotes[inv.ticker]

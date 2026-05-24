@@ -12,11 +12,15 @@ const bulkSchema = z.object({
 // GET /api/budgets?month=YYYY-MM
 export async function GET(req: NextRequest) {
   try {
-    const user  = await requireAuth()
-    const month = req.nextUrl.searchParams.get('month') ?? ''
+    const user = await requireAuth()
+    if (!user.id) {
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+    }
+    const userId = user.id as string
+    const month  = req.nextUrl.searchParams.get('month') ?? ''
 
     const limits = await prisma.budgetLimit.findMany({
-      where:   { userId: user.id, ...(month ? { month } : {}) },
+      where:   { userId, ...(month ? { month } : {}) },
       include: { category: true },
     })
 
@@ -35,7 +39,11 @@ export async function GET(req: NextRequest) {
 // POST /api/budgets — salva/atualiza limites em lote
 export async function POST(req: NextRequest) {
   try {
-    const user   = await requireAuth()
+    const user = await requireAuth()
+    if (!user.id) {
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+    }
+    const userId = user.id as string
     const body   = await req.json()
     const parsed = bulkSchema.safeParse(body)
 
@@ -44,14 +52,14 @@ export async function POST(req: NextRequest) {
 
     const { month, limits } = parsed.data
 
-    // Upsert cada limite
-    const ops = Object.entries(limits)
+    // Upsert cada limite com valor > 0
+    const upsertOps = Object.entries(limits)
       .filter(([, amount]) => amount > 0)
       .map(([categoryId, amount]) =>
         prisma.budgetLimit.upsert({
-          where:  { userId_categoryId_month: { userId: user.id, categoryId, month } },
+          where:  { userId_categoryId_month: { userId, categoryId, month } },
           update: { amount },
-          create: { userId: user.id, categoryId, month, amount },
+          create: { userId, categoryId, month, amount },
         })
       )
 
@@ -61,14 +69,14 @@ export async function POST(req: NextRequest) {
       .map(([categoryId]) => categoryId)
 
     if (zeroIds.length > 0) {
-      ops.push(
-        prisma.budgetLimit.deleteMany({
-          where: { userId: user.id, month, categoryId: { in: zeroIds } },
-        }) as any
-      )
+      await prisma.budgetLimit.deleteMany({
+        where: { userId, month, categoryId: { in: zeroIds } },
+      })
     }
 
-    await prisma.$transaction(ops)
+    if (upsertOps.length > 0) {
+      await prisma.$transaction(upsertOps)
+    }
 
     return NextResponse.json({ success:true, data:null, error:null })
   } catch (err: any) {

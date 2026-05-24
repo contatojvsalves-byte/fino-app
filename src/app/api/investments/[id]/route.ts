@@ -18,9 +18,11 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const user = await requireAuth()
+    const user   = await requireAuth()
+    const userId = user.id as string
+
     const existing = await prisma.investment.findUnique({ where: { id } })
-    if (!existing || existing.userId !== user.id)
+    if (!existing || existing.userId !== userId)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
     const body   = await req.json()
@@ -52,9 +54,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const user = await requireAuth()
+    const user   = await requireAuth()
+    const userId = user.id as string
+
     const existing = await prisma.investment.findUnique({ where: { id } })
-    if (!existing || existing.userId !== user.id)
+    if (!existing || existing.userId !== userId)
       return NextResponse.json({ success:false, data:null, error:'Não encontrado' }, { status:404 })
 
     await prisma.investment.delete({ where: { id } })

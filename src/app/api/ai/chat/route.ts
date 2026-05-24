@@ -28,12 +28,10 @@ function checkRateLimit(userId: string): boolean {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth()
-    if (!user.id) {
-      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
-    }
+    const userId = user.id as string
 
     // Rate limiting
-    if (!checkRateLimit(user.id)) {
+    if (!checkRateLimit(userId)) {
       return NextResponse.json(
         { success:false, data:null, error:'Muitas requisições. Aguarde 1 minuto.' },
         { status: 429 }
@@ -49,7 +47,7 @@ export async function POST(req: NextRequest) {
     const { message, conversationId } = parsed.data
 
     // Verificar limite do plano
-    let plan = await prisma.userPlan.findUnique({ where: { userId: user.id } })
+    let plan = await prisma.userPlan.findUnique({ where: { userId: user.id as string } })
     if (!plan) return NextResponse.json({ success:false, data:null, error:'Plano não encontrado' }, { status:400 })
 
     // ── Reset mensal automático ──
@@ -60,7 +58,7 @@ export async function POST(req: NextRequest) {
     if (plan.aiResetKey !== resetKey) {
       // Mudou o mês — zerar o contador
       plan = await prisma.userPlan.update({
-        where: { userId: user.id },
+        where: { userId: user.id as string },
         data:  {
           aiMessagesUsed: 0,
           aiResetKey:     resetKey,
@@ -77,7 +75,7 @@ export async function POST(req: NextRequest) {
     let convId = conversationId
     if (!convId) {
       const conv = await prisma.aiConversation.create({
-        data: { userId: user.id, title: message.slice(0, 60) },
+        data: { userId: user.id as string, title: message.slice(0, 60) },
       })
       convId = conv.id
     } else {
@@ -96,15 +94,15 @@ export async function POST(req: NextRequest) {
 
     // Construir contexto financeiro do usuário
     const [profile, txRaw, debts, budgetLimits] = await Promise.all([
-      prisma.financialProfile.findUnique({ where: { userId: user.id } }),
+      prisma.financialProfile.findUnique({ where: { userId: user.id as string } }),
       prisma.transaction.findMany({
-        where:   { userId: user.id },
+        where:   { userId: user.id as string },
         include: { category: true },
         orderBy: { date: 'desc' },
         take:    100,
       }),
-      prisma.debt.findMany({ where: { userId: user.id, status: 'ACTIVE' } }),
-      prisma.budgetLimit.findMany({ where: { userId: user.id } }),
+      prisma.debt.findMany({ where: { userId: user.id as string, status: 'ACTIVE' } }),
+      prisma.budgetLimit.findMany({ where: { userId: user.id as string } }),
     ])
 
     const transactions = txRaw.map(t => ({
@@ -141,7 +139,7 @@ export async function POST(req: NextRequest) {
       prisma.aiMessage.create({ data: { conversationId: convId, role: 'USER', content: message } }),
       prisma.aiMessage.create({ data: { conversationId: convId, role: 'ASSISTANT', content, tokensUsed } }),
       prisma.userPlan.update({
-        where: { userId: user.id },
+        where: { userId: user.id as string },
         data:  { aiMessagesUsed: { increment: 1 } },
       }),
       prisma.aiConversation.update({

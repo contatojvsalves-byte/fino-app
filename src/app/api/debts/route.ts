@@ -19,12 +19,17 @@ const debtSchema = z.object({
 
 export async function GET() {
   try {
-    const user  = await requireAuth()
-    const debts = await prisma.debt.findMany({
-      where:   { userId: user.id },
+    const user = await requireAuth()
+    if (!user.id)
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+
+    const userId = user.id as string
+    const debts  = await prisma.debt.findMany({
+      where:   { userId },
       include: { payments: { orderBy: { paidAt: 'desc' }, take: 5 } },
       orderBy: { createdAt: 'desc' },
     })
+
     return NextResponse.json({
       success: true,
       data: debts.map(d => ({
@@ -38,16 +43,22 @@ export async function GET() {
       error: null,
     })
   } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+    if (err.message === 'UNAUTHORIZED')
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
     return NextResponse.json({ success:false, data:null, error:'Erro interno' }, { status:500 })
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user   = await requireAuth()
+    const user = await requireAuth()
+    if (!user.id)
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+
+    const userId = user.id as string
     const body   = await req.json()
     const parsed = debtSchema.safeParse(body)
+
     if (!parsed.success)
       return NextResponse.json({ success:false, data:null, error: parsed.error.errors[0].message }, { status:400 })
 
@@ -57,14 +68,13 @@ export async function POST(req: NextRequest) {
       totalInstallments, installmentDueDay,
     } = parsed.data
 
-    // Se parcelado, calcular pagamento mensal automaticamente
     const calcPayment = isInstallment && totalInstallments
       ? originalAmount / totalInstallments
       : monthlyPayment
 
     const debt = await prisma.debt.create({
       data: {
-        userId:              user.id,
+        userId,
         name,
         originalAmount,
         currentBalance:      currentBalance ?? originalAmount,
@@ -73,9 +83,9 @@ export async function POST(req: NextRequest) {
         dueDate:             dueDate ? new Date(dueDate) : null,
         notes:               notes ?? null,
         isInstallment,
-        totalInstallments:   isInstallment ? totalInstallments ?? null : null,
+        totalInstallments:   isInstallment ? (totalInstallments ?? null) : null,
         paidInstallments:    0,
-        installmentDueDay:   isInstallment ? installmentDueDay ?? null : null,
+        installmentDueDay:   isInstallment ? (installmentDueDay ?? null) : null,
       },
       include: { payments: true },
     })
@@ -93,7 +103,8 @@ export async function POST(req: NextRequest) {
       error: null,
     }, { status: 201 })
   } catch (err: any) {
-    if (err.message === 'UNAUTHORIZED') return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
+    if (err.message === 'UNAUTHORIZED')
+      return NextResponse.json({ success:false, data:null, error:'Não autorizado' }, { status:401 })
     console.error('[POST /api/debts]', err)
     return NextResponse.json({ success:false, data:null, error:'Erro interno' }, { status:500 })
   }

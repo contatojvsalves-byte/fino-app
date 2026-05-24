@@ -10,19 +10,19 @@ export async function GET() {
 
     const [transactions, debts, investments, profile] = await Promise.all([
       prisma.transaction.findMany({
-        where:   { userId: user.id },
+        where:   { userId: user.id as string },
         include: { category: true },
         orderBy: { date: 'desc' },
       }),
       prisma.debt.findMany({
-        where:   { userId: user.id },
+        where:   { userId: user.id as string },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.investment.findMany({
-        where:   { userId: user.id },
+        where:   { userId: user.id as string },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.financialProfile.findUnique({ where: { userId: user.id } }),
+      prisma.financialProfile.findUnique({ where: { userId: user.id as string } }),
     ])
 
     // ── Montar CSV ──────────────────────────────────────

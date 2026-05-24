@@ -123,7 +123,7 @@ function SimChart({ results, assets }: { results: YearlyResult[]; assets: SimAss
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+              label: ctx => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
             },
           },
         },

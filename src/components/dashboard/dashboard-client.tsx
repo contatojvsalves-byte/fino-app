@@ -178,7 +178,7 @@ export function DashboardClient({ summary, patrimony, categories, alerts, recent
         </button>
       </div>
 
-      <div className="card divide-y" style={{ divideColor: 'var(--border)' }}>
+      <div className="card divide-y divide-white/[0.07]">
         {recentTx.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-3xl mb-2">💸</p>
