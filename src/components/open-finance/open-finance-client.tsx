@@ -72,7 +72,12 @@ export function OpenFinanceClient({ connections: initial }: { connections: BankC
 
       // Abrir widget do Pluggy
       const PluggyConnect = (window as any).PluggyConnect
-      if (!PluggyConnect) { alert('SDK do Pluggy não carregou. Recarregue a página.'); return }
+      console.log('PluggyConnect:', PluggyConnect)
+      console.log('pluggyLoaded:', pluggyLoaded)
+      if (!PluggyConnect) { 
+        alert('SDK do Pluggy não carregou. Recarregue a página e tente novamente.') 
+        return 
+      }
 
       PluggyConnect({
         connectToken,
