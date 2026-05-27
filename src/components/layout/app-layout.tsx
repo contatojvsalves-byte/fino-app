@@ -7,17 +7,18 @@ import { useTheme } from '@/components/ui/theme-provider'
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3,
   Sparkles, Settings, LogOut, Gem, Sun, Moon,
-  CreditCard, Bell, TrendingUp,
+  CreditCard, Bell, TrendingUp, Building2,
 } from 'lucide-react'
 import type { Session } from 'next-auth'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',    label: 'Início',        icon: LayoutDashboard },
-  { href: '/transactions', label: 'Lançamentos',   icon: ArrowLeftRight  },
-  { href: '/investments',  label: 'Investimentos', icon: TrendingUp      },
-  { href: '/debts',        label: 'Dívidas',       icon: CreditCard      },
-  { href: '/charts',       label: 'Evolução',      icon: BarChart3       },
-  { href: '/ai',           label: 'IA',            icon: Sparkles        },
+  { href: '/dashboard',     label: 'Início',        icon: LayoutDashboard },
+  { href: '/transactions',  label: 'Lançamentos',   icon: ArrowLeftRight  },
+  { href: '/investments',   label: 'Investimentos', icon: TrendingUp      },
+  { href: '/debts',         label: 'Dívidas',       icon: CreditCard      },
+  { href: '/charts',        label: 'Evolução',      icon: BarChart3       },
+  { href: '/ai',            label: 'IA',            icon: Sparkles        },
+  { href: '/open-finance',  label: 'Open Finance',  icon: Building2       },
 ]
 
 export function AppLayout({ children, session }: { children: React.ReactNode; session: Session }) {
