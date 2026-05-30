@@ -51,7 +51,7 @@ export function OpenFinanceClient({ connections: initial }: { connections: BankC
     if (document.getElementById('pluggy-sdk')) { setPluggyLoaded(true); return }
     const script    = document.createElement('script')
     script.id       = 'pluggy-sdk'
-    script.src      = 'https://cdn.pluggy.ai/pluggy-connect/v2.1.1/pluggy-connect.js'
+    script.src = 'https://cdn.pluggy.ai/pluggy-connect/v2/pluggy-connect.js'
     script.onload   = () => setPluggyLoaded(true)
     script.onerror  = () => console.error('Falha ao carregar SDK Pluggy')
     document.head.appendChild(script)
